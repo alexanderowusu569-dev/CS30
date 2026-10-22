@@ -5,7 +5,14 @@ import streamlit as st
 import ollama
 
 from pypdf import PdfReader
-
+OLLAMA_GATEWAY_URL = st.secrets["OLLAMA_GATEWAY_URL"].rstrip("/")
+CS30_GATEWAY_TOKEN = st.secrets["CS30_GATEWAY_TOKEN"]
+ollama_client = ollama.Client(
+    host=OLLAMA_GATEWAY_URL,
+    headers={
+        "Authorization": f"Bearer {CS30_GATEWAY_TOKEN}"
+    },
+)
 
 st.set_page_config(
     page_title="CS30",
@@ -245,7 +252,7 @@ def answer_from_notes(question, results):
         for score, section, matches in results
     )
 
-    response = ollama.chat(
+    response = ollama_client.chat(
         model="llama3.2:3b",
         messages=[
             {
@@ -278,7 +285,7 @@ def answer_from_notes(question, results):
 # GENERATE TEXT EMBEDDINGS WITH OLLAMA
 
 def get_embedding(text):
-    response = ollama.embed(
+    response = ollama_client.embed(
         model="nomic-embed-text",
         input=text
     )
@@ -765,7 +772,7 @@ question = st.text_input("Ask AI a question:")
 if st.button("Ask AI"):
     if question:
         with st.spinner("AI is thinking..."):
-            response = ollama.chat(
+            response = ollama_client.chat(
                 model="llama3.2:3b",
                 options={
                     "num_predict": 300
