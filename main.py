@@ -1,17 +1,12 @@
-
 import random
 import re
 import streamlit as st
-import ollama
 
 from pypdf import PdfReader
-OLLAMA_GATEWAY_URL = st.secrets["OLLAMA_GATEWAY_URL"].rstrip("/")
-CS30_GATEWAY_TOKEN = st.secrets["CS30_GATEWAY_TOKEN"]
-ollama_client = ollama.Client(
-    host=OLLAMA_GATEWAY_URL,
-    headers={
-        "Authorization": f"Bearer {CS30_GATEWAY_TOKEN}"
-    },
+from groq import Groq
+
+groq_client = Groq(
+    api_key=st.secrets["GROQ_API_KEY"]
 )
 
 st.set_page_config(
@@ -252,8 +247,8 @@ def answer_from_notes(question, results):
         for score, section, matches in results
     )
 
-    response = ollama_client.chat(
-        model="llama3.2:3b",
+    response = groq_client.chat.completions.create(
+        model="llama-3.1-8b-instant",
         messages=[
             {
                 "role": "system",
@@ -277,58 +272,12 @@ def answer_from_notes(question, results):
                     "Answer the student's question based on these notes."
                 )
             }
-        ]
+        ],
+        temperature=0.3,
     )
+    response = response.choices[0].message.content
 
-    return response["message"]["content"]
-
-# GENERATE TEXT EMBEDDINGS WITH OLLAMA
-
-def get_embedding(text):
-    response = ollama_client.embed(
-        model="nomic-embed-text",
-        input=text
-    )
-    return response["embeddings"][0]
-
-
-def cosine_similarity(vector_a, vector_b):
-    import numpy as np
-
-    a = np.array(vector_a)
-    b = np.array(vector_b)
-
-    denominator = np.linalg.norm(a) * np.linalg.norm(b)
-
-    if denominator == 0:
-        return 0.0
-
-    return float(np.dot(a, b) / denominator)
-
-@st.cache_data(show_spinner=False)
-def get_cached_embedding(text):
-    return get_embedding(text)
-def semantic_search_notes(question, sections, top_k=5):
-    question_embedding = get_embedding(question)
-    results = []
-
-    for section in sections:
-        text = section["text"].strip()
-
-        if not text:
-            continue
-
-        section_embedding = get_cached_embedding(text)
-        score = cosine_similarity(
-            question_embedding,
-            section_embedding
-        )
-
-        results.append((score, section, set()))
-
-    results.sort(key=lambda item: item[0], reverse=True)
-
-    return results[:top_k]
+    return response
 
 # 3. GENERATE REVISION QUESTIONS
 
@@ -543,7 +492,7 @@ if sections:
         )
 
         if st.button("Search Notes", type="primary"):
-            results = semantic_search_notes(question, sections)
+            results = search_notes(question, sections)
             if question.strip():
                 current_chat["messages"].append({
                     "role": "user",
@@ -581,8 +530,7 @@ if sections:
 
                 except Exception as error:
                     st.error(
-                        "CS30 could not connect to Ollama. "
-                        "Please check that Ollama is running."
+                        "CS30 could not generate an answer. Please check your Groq API settings."
                     )
 
 
@@ -619,11 +567,6 @@ if sections:
                         )
 
 
-                st.info(
-                    "These results are retrieved from your notes. "
-                    "This version does not yet generate "
-                    "AI-written explanations."
-                )
 
     # 6. PRACTICE QUIZ
 
@@ -772,14 +715,14 @@ question = st.text_input("Ask AI a question:")
 if st.button("Ask AI"):
     if question:
         with st.spinner("AI is thinking..."):
-            response = ollama_client.chat(
-                model="llama3.2:3b",
-                options={
-                    "num_predict": 300
-                },
+            response = groq_client.chat.completions.create(
+                model="llama-3.1-8b-instant",
                 messages=[
                     {"role": "user", "content": question}
-                ]
+                ],
+                max_tokens=300,
             )
 
-        st.write(response["message"]["content"])
+            st.write(response.choices[0].message.content)
+
+
