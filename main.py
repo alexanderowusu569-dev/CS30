@@ -250,7 +250,7 @@ def answer_from_notes(question, results):
     response = groq_client.chat.completions.create(
         model="openai/gpt-oss-120b",
         messages=[
-
+            {
                 "role": "system",
                 "content": (
                     "You are CS30, a student study assistant. "
