@@ -250,7 +250,7 @@ def answer_from_notes(question, results):
     response = groq_client.chat.completions.create(
         model="openai/gpt-oss-120b",
         messages=[
-            {
+
                 "role": "system",
                 "content": (
                     "You are CS30, a student study assistant. "
@@ -716,7 +716,7 @@ if st.button("Ask AI"):
     if question:
         with st.spinner("AI is thinking..."):
             response = groq_client.chat.completions.create(
-                model="llama-3.1-8b-instant",
+                model="openai/gpt-oss-120b",
                 messages=[
                     {"role": "user", "content": question}
                 ],
